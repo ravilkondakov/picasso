@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: bike
+      POSTGRES_USER: biker
+      POSTGRES_PASSWORD: bike-admin
+    ports:
+      - 5432:5432
+
+
+  redis:
+    image: redis:alpine
+
+#  migrations:
+#    build: .
+#    command: python manage.py migrate
+#    volumes:
+#      - .:/app
+#    depends_on:
+#      - db
+
+  web:
+    build: .
+    command: gunicorn --bind 0.0.0.0:8000 bike.wsgi
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - migrations
+      - db
+      - redis
+    environment:
+      DATABASE_URL: postgres://biker:bike-admin@db:5432/bike
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+
+  worker:
+    build: .
+    command: celery -A bike worker -l info
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: postgres://biker:bike-admin@db:5432/bike
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+
+  test:
+    build: .
+    command: pytest
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: postgres://user:password@db:5432/bike_rental
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0

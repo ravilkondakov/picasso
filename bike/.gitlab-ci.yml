@@ -1,0 +1,25 @@
+stages:
+  - test
+  - deploy
+
+variables:
+  DATABASE_URL: postgres://biker:bike-admin@db:5432/bike
+  REDIS_URL: redis://redis:6379/0
+
+services:
+  - postgres:13
+  - redis:alpine
+
+before_script:
+  - pip install poetry
+  - poetry install
+
+test:
+  stage: test
+  script:
+    - poetry run pytest
+
+deploy:
+  stage: deploy
+  script:
+    - docker-compose up -d --build
